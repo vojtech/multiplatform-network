@@ -20,4 +20,4 @@ pluginManagement {
 
 enableFeaturePreview('GRADLE_METADATA')
 rootProject.buildFileName = "build.gradle.kts"
-rootProject.name = 'Network'
+rootProject.name = 'network'

@@ -27,7 +27,7 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
     private val job = Job()
 
     @Transient
-    private val errorHandlerException = CoroutineExceptionHandler { coroutineContext, throwable ->
+    private val errorHandlerException = CoroutineExceptionHandler { _, throwable ->
         println(throwable)
     }
 
@@ -36,8 +36,7 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
         get() = job + ApplicationDispatcher + errorHandlerException
 
     inline fun <reified S, reified T : Request<T>> execute(request: T): CoroutineCallback<Response<S>> {
-        val method = HttpMethod.parse(request.method)
-        return when (method) {
+        return when (HttpMethod.parse(request.method)) {
             HttpMethod.Get -> executeGet(request)
             HttpMethod.Post -> executePost(request)
             HttpMethod.Put -> executePut(request)

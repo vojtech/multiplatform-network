@@ -67,7 +67,7 @@ kotlin {
 
     configure(listOf(iosArm32, iosArm64, iosX64)) {
         binaries.framework {
-            baseName = "Network"
+            baseName = "network"
             val isSimulator = targetName == "iosX64"
 
             if (isSimulator) {
@@ -158,6 +158,7 @@ kotlin {
         val iosArm32Test by getting {
             dependsOn(iosArm64Test)
         }
+    }
 
 //        cocoapods {
 //            summary = "Multiplatform network library"
@@ -165,13 +166,12 @@ kotlin {
 //
 //            pod("Network", "0.0.1")
 //        }
-    }
 }
 
 fun createFatFramework(config: FatFrameworkConfig) {
     tasks.create(config.taskName, FatFrameworkTask::class) {
-        baseName = "Network"
-        destinationDir = buildDir.resolve("fat-framework/${config.buildType.toString().toLowerCase()}")
+        baseName = "network"
+        destinationDir = buildDir.resolve(config.getPath())
         from(
             config.frameworks.map { it.binaries.getFramework(config.buildType) }
         )
@@ -185,7 +185,7 @@ sealed class FatFrameworkConfig(
     val buildPath: String
 ) {
 
-    fun getPath(): String = "buildPath/${buildType.toString().toLowerCase()}"
+    fun getPath(): String = "fat-framework/$buildPath/${buildType.toString().toLowerCase()}"
 
     class FullDebug(frameworks: Array<KotlinNativeTarget>) : FatFrameworkConfig(
         taskName = "fatFrameworkFullDebug",
