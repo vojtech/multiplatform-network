@@ -1,4 +1,4 @@
-package com.vhrdina.network.model
+package com.vhrdina.multiplatform.network.model
 
 class Response<T> constructor(val result: T? = null,
                               val headers: Map<String, List<String>>? = null,

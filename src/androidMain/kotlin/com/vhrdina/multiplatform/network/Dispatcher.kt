@@ -1,4 +1,4 @@
-package com.vhrdina.network
+package com.vhrdina.multiplatform.network
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

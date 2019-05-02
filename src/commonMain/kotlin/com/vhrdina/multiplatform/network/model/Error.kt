@@ -1,4 +1,4 @@
-package com.vhrdina.network.model
+package com.vhrdina.multiplatform.network.model
 
 import kotlinx.serialization.Serializable
 

@@ -1,4 +1,4 @@
-package com.vhrdina.network
+package com.vhrdina.multiplatform.network
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Runnable
@@ -11,7 +11,8 @@ import kotlin.coroutines.CoroutineContext
 internal actual val ApplicationDispatcher: CoroutineDispatcher =
     NsQueueDispatcher(dispatch_get_main_queue())
 
-internal actual val UIDispatcher: CoroutineDispatcher = NsQueueDispatcher(dispatch_get_main_queue())
+internal actual val UIDispatcher: CoroutineDispatcher =
+    NsQueueDispatcher(dispatch_get_main_queue())
 
 internal class NsQueueDispatcher(private val dispatchQueue: dispatch_queue_t) : CoroutineDispatcher() {
     override fun dispatch(context: CoroutineContext, block: Runnable) {

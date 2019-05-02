@@ -1,4 +1,4 @@
-package com.vhrdina.network.util
+package com.vhrdina.multiplatform.network.util
 
 import io.ktor.client.features.json.JsonSerializer
 import io.ktor.client.features.json.serializer.KotlinxSerializer

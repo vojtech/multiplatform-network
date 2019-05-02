@@ -1,11 +1,11 @@
-package com.vhrdina.network.util
+package com.vhrdina.multiplatform.network.util
 
-import com.vhrdina.network.ApplicationDispatcher
-import com.vhrdina.network.CoroutineCallback
-import com.vhrdina.network.model.Config
-import com.vhrdina.network.model.Error
-import com.vhrdina.network.model.Request
-import com.vhrdina.network.model.Response
+import com.vhrdina.multiplatform.network.ApplicationDispatcher
+import com.vhrdina.multiplatform.network.CoroutineCallback
+import com.vhrdina.multiplatform.network.model.Config
+import com.vhrdina.multiplatform.network.model.Error
+import com.vhrdina.multiplatform.network.model.Request
+import com.vhrdina.multiplatform.network.model.Response
 import io.ktor.client.HttpClient
 import io.ktor.client.call.typeInfo
 import io.ktor.client.request.*
@@ -49,14 +49,16 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
 
     @PublishedApi
     internal inline fun <reified S> createUnsupportedMethodResponse(): CoroutineCallback<Response<S>> {
-        return CoroutineCallback<Response<S>>().apply {
+        return CoroutineCallback<Response<S>>()
+            .apply {
             sendError(Error(1000, "Unsupported Http Method"))
         }
     }
 
     @PublishedApi
     internal inline fun <reified S, reified T : Request<T>> executeGet(request: T): CoroutineCallback<Response<S>> {
-        val coroutineCallback = CoroutineCallback<Response<S>>()
+        val coroutineCallback =
+            CoroutineCallback<Response<S>>()
         launch(coroutineContext) {
             coroutineCallback.send(get(request))
         }.invokeOnCompletion {
@@ -67,7 +69,8 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
 
     @PublishedApi
     internal inline fun <reified S, reified T : Request<T>> executePost(request: T): CoroutineCallback<Response<S>> {
-        val coroutineCallback = CoroutineCallback<Response<S>>()
+        val coroutineCallback =
+            CoroutineCallback<Response<S>>()
         launch(coroutineContext) {
             coroutineCallback.send(post(request))
         }.invokeOnCompletion {
@@ -78,7 +81,8 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
 
     @PublishedApi
     internal inline fun <reified S, reified T : Request<T>> executePut(request: T): CoroutineCallback<Response<S>> {
-        val coroutineCallback = CoroutineCallback<Response<S>>()
+        val coroutineCallback =
+            CoroutineCallback<Response<S>>()
         launch(coroutineContext) {
             coroutineCallback.send(put(request))
         }.invokeOnCompletion {
@@ -89,7 +93,8 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
 
     @PublishedApi
     internal inline fun <reified S, reified T : Request<T>> executeDelete(request: T): CoroutineCallback<Response<S>> {
-        val coroutineCallback = CoroutineCallback<Response<S>>()
+        val coroutineCallback =
+            CoroutineCallback<Response<S>>()
         launch(coroutineContext) {
             coroutineCallback.send(delete(request))
         }.invokeOnCompletion {
@@ -100,7 +105,8 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
 
     @PublishedApi
     internal inline fun <reified S, reified T : Request<T>> executeOptions(request: T): CoroutineCallback<Response<S>> {
-        val coroutineCallback = CoroutineCallback<Response<S>>()
+        val coroutineCallback =
+            CoroutineCallback<Response<S>>()
         launch(coroutineContext) {
             coroutineCallback.send(options(request))
         }.invokeOnCompletion {
@@ -111,7 +117,8 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
 
     @PublishedApi
     internal inline fun <reified S, reified T : Request<T>> executeHead(request: T): CoroutineCallback<Response<S>> {
-        val coroutineCallback = CoroutineCallback<Response<S>>()
+        val coroutineCallback =
+            CoroutineCallback<Response<S>>()
         launch(coroutineContext) {
             coroutineCallback.send(head(request))
         }.invokeOnCompletion {
@@ -152,7 +159,7 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
 
     @PublishedApi
     internal inline fun <reified T : Request<T>> HttpRequestBuilder.buildRequest(request: T) {
-        url { takeFrom("${config.networkConfig.host}/${request.endpoint}") }
+        url { takeFrom("${config.requestConfig.host}/${request.endpoint}") }
         request.query?.entries?.iterator()?.forEach {
             parameter(it.key, it.value)
         }

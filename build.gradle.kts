@@ -1,8 +1,6 @@
+import com.android.build.gradle.internal.tasks.factory.dependsOn
 import org.jetbrains.kotlin.gradle.plugin.mpp.Framework
-import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
-import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.tasks.FatFrameworkTask
-import kotlin.arrayOf
 
 plugins {
     kotlin("multiplatform") version "1.3.30"
@@ -12,8 +10,13 @@ plugins {
     `maven-publish`
 }
 
-group = "com.vhrdina.network"
-version = "0.0.1"
+val lib_version: String by project
+val lib_group: String by project
+val lib_artifact_id: String by project
+val framework_name: String by project
+
+group = lib_group
+version = lib_version
 
 buildscript {
     repositories {
@@ -67,7 +70,7 @@ kotlin {
 
     configure(listOf(iosArm32, iosArm64, iosX64)) {
         binaries.framework {
-            baseName = "network"
+            baseName = framework_name
             val isSimulator = targetName == "iosX64"
 
             if (isSimulator) {
@@ -80,12 +83,12 @@ kotlin {
     val deviceSimulator64 = arrayOf(iosArm64, iosX64)
     val deviceOnly = arrayOf(iosArm32, iosArm64)
 
-    createFatFramework(FatFrameworkConfig.FullDebug(fullFat))
-    createFatFramework(FatFrameworkConfig.FullRelease(fullFat))
-    createFatFramework(FatFrameworkConfig.DeviceSimulator64Debug(deviceSimulator64))
-    createFatFramework(FatFrameworkConfig.DeviceSimulator64Release(deviceSimulator64))
-    createFatFramework(FatFrameworkConfig.Device32x64Debug(deviceOnly))
-    createFatFramework(FatFrameworkConfig.Device32x64Release(deviceOnly))
+    createFatFramework(FatFrameworkConfig.FullDebug(frameworkName = framework_name, frameworks = fullFat))
+    createFatFramework(FatFrameworkConfig.FullRelease(frameworkName = framework_name, frameworks = fullFat))
+    createFatFramework(FatFrameworkConfig.DeviceSimulator64Debug(frameworkName = framework_name, frameworks = deviceSimulator64))
+    createFatFramework(FatFrameworkConfig.DeviceSimulator64Release(frameworkName = framework_name, frameworks = deviceSimulator64))
+    createFatFramework(FatFrameworkConfig.Device32x64Debug(frameworkName = framework_name, frameworks = deviceOnly))
+    createFatFramework(FatFrameworkConfig.Device32x64Release(frameworkName = framework_name, frameworks = deviceOnly))
 
     sourceSets {
         val commonMain by getting {
@@ -160,6 +163,13 @@ kotlin {
         }
     }
 
+    tasks.build.dependsOn("fatFrameworkFullDebug")
+    tasks.build.dependsOn("fatFrameworkFullRelease")
+    tasks.build.dependsOn("fatFrameworkDeviceSimulator64Debug")
+    tasks.build.dependsOn("fatFrameworkDeviceSimulator64Release")
+    tasks.build.dependsOn("fatFrameworkDevice32x64Debug")
+    tasks.build.dependsOn("fatFrameworkDevice32x64Release")
+
 //        cocoapods {
 //            summary = "Multiplatform network library"
 //            homepage = "https://github.com/vojtech"
@@ -170,62 +180,10 @@ kotlin {
 
 fun createFatFramework(config: FatFrameworkConfig) {
     tasks.create(config.taskName, FatFrameworkTask::class) {
-        baseName = "network"
+        baseName = config.frameworkName
         destinationDir = buildDir.resolve(config.getPath())
         from(
             config.frameworks.map { it.binaries.getFramework(config.buildType) }
         )
     }
-}
-
-sealed class FatFrameworkConfig(
-    val taskName: String,
-    val frameworks: Array<KotlinNativeTarget>,
-    val buildType: NativeBuildType,
-    val buildPath: String
-) {
-
-    fun getPath(): String = "fat-framework/$buildPath/${buildType.toString().toLowerCase()}"
-
-    class FullDebug(frameworks: Array<KotlinNativeTarget>) : FatFrameworkConfig(
-        taskName = "fatFrameworkFullDebug",
-        frameworks = frameworks,
-        buildType = NativeBuildType.DEBUG,
-        buildPath = "full"
-    )
-
-    class FullRelease(frameworks: Array<KotlinNativeTarget>) : FatFrameworkConfig(
-        taskName = "fatFrameworkFullRelease",
-        frameworks = frameworks,
-        buildType = NativeBuildType.RELEASE,
-        buildPath = "full"
-    )
-
-    class DeviceSimulator64Debug(frameworks: Array<KotlinNativeTarget>) : FatFrameworkConfig(
-        taskName = "fatFrameworkDeviceSimulator64Debug",
-        frameworks = frameworks,
-        buildType = NativeBuildType.DEBUG,
-        buildPath = "device-simulator-64"
-    )
-
-    class DeviceSimulator64Release(frameworks: Array<KotlinNativeTarget>) : FatFrameworkConfig(
-        taskName = "fatFrameworkDeviceSimulator64Release",
-        frameworks = frameworks,
-        buildType = NativeBuildType.RELEASE,
-        buildPath = "device-simulator-64"
-    )
-
-    class Device32x64Debug(frameworks: Array<KotlinNativeTarget>) : FatFrameworkConfig(
-        taskName = "fatFrameworkDevice32x64Debug",
-        frameworks = frameworks,
-        buildType = NativeBuildType.DEBUG,
-        buildPath = "device-32x64"
-    )
-
-    class Device32x64Release(frameworks: Array<KotlinNativeTarget>) : FatFrameworkConfig(
-        taskName = "fatFrameworkDevice32x64Release",
-        frameworks = frameworks,
-        buildType = NativeBuildType.RELEASE,
-        buildPath = "device-32x64"
-    )
 }

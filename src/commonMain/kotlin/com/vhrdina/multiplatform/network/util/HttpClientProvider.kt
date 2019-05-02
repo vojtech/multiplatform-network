@@ -1,6 +1,6 @@
-package com.vhrdina.network.util
+package com.vhrdina.multiplatform.network.util
 
-import com.vhrdina.network.model.Config
+import com.vhrdina.multiplatform.network.model.Config
 import io.ktor.client.HttpClient
 
 expect class HttpClientProvider constructor(config: Config) {

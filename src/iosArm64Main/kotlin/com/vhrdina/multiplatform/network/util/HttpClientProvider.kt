@@ -1,6 +1,7 @@
-package com.vhrdina.network.util
+package com.vhrdina.multiplatform.network.util
 
-import com.vhrdina.network.model.Config
+import com.vhrdina.multiplatform.network.model.Config
+import com.vhrdina.multiplatform.network.util.NetworkSerializer
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.engine.ios.Ios
@@ -14,8 +15,8 @@ actual class HttpClientProvider actual constructor(val config: Config) {
     actual fun getHttpClient(): HttpClient {
         val engine: HttpClientEngineFactory<*> = if(config.mock) MockEngine else Ios
         return HttpClient(engine) {
-            followRedirects = config.networkConfig.followRedirects
-            expectSuccess = config.networkConfig.expectSuccess
+            followRedirects = config.requestConfig.followRedirects
+            expectSuccess = config.requestConfig.expectSuccess
             install(JsonFeature) {
                 serializer = NetworkSerializer.serializer
             }

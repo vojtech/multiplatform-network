@@ -1,6 +1,6 @@
-package com.vhrdina.network
+package com.vhrdina.multiplatform.network
 
-import com.vhrdina.network.model.Error
+import com.vhrdina.multiplatform.network.model.Error
 
 class CoroutineCallback<T> {
 
