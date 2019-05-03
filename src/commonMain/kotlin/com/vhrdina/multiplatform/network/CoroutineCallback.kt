@@ -7,9 +7,9 @@ class CoroutineCallback<T> {
     private val results = arrayListOf<T>()
     private val errors = arrayListOf<Error>()
 
-    val onReceive: (T?) -> Unit = {}
+    var onReceive: (T?) -> Unit = {}
 
-    val onError: (Error?) -> Unit = {}
+    var onError: (Error?) -> Unit = {}
 
     fun send(item: T, postpone: Boolean = false) {
         results.add(item)

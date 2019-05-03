@@ -5,5 +5,5 @@ import com.vhrdina.multiplatform.network.model.Response
 
 interface INetworkClient {
 
-    fun <S, T : Request<T>> execute(request: T): CoroutineCallback<Response<S>>
+    fun <S> execute(request: Request): CoroutineCallback<Response<S>>
 }

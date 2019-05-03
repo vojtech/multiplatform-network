@@ -35,7 +35,7 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
     override val coroutineContext: CoroutineContext
         get() = job + ApplicationDispatcher + errorHandlerException
 
-    inline fun <reified S, reified T : Request<T>> execute(request: T): CoroutineCallback<Response<S>> {
+    inline fun <reified S> execute(request: Request): CoroutineCallback<Response<S>> {
         return when (HttpMethod.parse(request.method)) {
             HttpMethod.Get -> executeGet(request)
             HttpMethod.Post -> executePost(request)
@@ -56,7 +56,7 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
     }
 
     @PublishedApi
-    internal inline fun <reified S, reified T : Request<T>> executeGet(request: T): CoroutineCallback<Response<S>> {
+    internal inline fun <reified S> executeGet(request: Request): CoroutineCallback<Response<S>> {
         val coroutineCallback =
             CoroutineCallback<Response<S>>()
         launch(coroutineContext) {
@@ -68,7 +68,7 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
     }
 
     @PublishedApi
-    internal inline fun <reified S, reified T : Request<T>> executePost(request: T): CoroutineCallback<Response<S>> {
+    internal inline fun <reified S> executePost(request: Request): CoroutineCallback<Response<S>> {
         val coroutineCallback =
             CoroutineCallback<Response<S>>()
         launch(coroutineContext) {
@@ -80,7 +80,7 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
     }
 
     @PublishedApi
-    internal inline fun <reified S, reified T : Request<T>> executePut(request: T): CoroutineCallback<Response<S>> {
+    internal inline fun <reified S> executePut(request: Request): CoroutineCallback<Response<S>> {
         val coroutineCallback =
             CoroutineCallback<Response<S>>()
         launch(coroutineContext) {
@@ -92,7 +92,7 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
     }
 
     @PublishedApi
-    internal inline fun <reified S, reified T : Request<T>> executeDelete(request: T): CoroutineCallback<Response<S>> {
+    internal inline fun <reified S> executeDelete(request: Request): CoroutineCallback<Response<S>> {
         val coroutineCallback =
             CoroutineCallback<Response<S>>()
         launch(coroutineContext) {
@@ -104,7 +104,7 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
     }
 
     @PublishedApi
-    internal inline fun <reified S, reified T : Request<T>> executeOptions(request: T): CoroutineCallback<Response<S>> {
+    internal inline fun <reified S> executeOptions(request: Request): CoroutineCallback<Response<S>> {
         val coroutineCallback =
             CoroutineCallback<Response<S>>()
         launch(coroutineContext) {
@@ -116,7 +116,7 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
     }
 
     @PublishedApi
-    internal inline fun <reified S, reified T : Request<T>> executeHead(request: T): CoroutineCallback<Response<S>> {
+    internal inline fun <reified S> executeHead(request: Request): CoroutineCallback<Response<S>> {
         val coroutineCallback =
             CoroutineCallback<Response<S>>()
         launch(coroutineContext) {
@@ -128,37 +128,37 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
     }
 
     @PublishedApi
-    internal suspend inline fun <reified S, reified T : Request<T>> get(request: T): Response<S> {
+    internal suspend inline fun <reified S> get(request: Request): Response<S> {
         return httpClient.get<HttpResponse> { buildRequest(request) }.processResponse()
     }
 
     @PublishedApi
-    internal suspend inline fun <reified S, reified T : Request<T>> post(request: T): Response<S> {
+    internal suspend inline fun <reified S> post(request: Request): Response<S> {
         return httpClient.post<HttpResponse> { buildRequest(request) }.processResponse()
     }
 
     @PublishedApi
-    internal suspend inline fun <reified S, reified T : Request<T>> put(request: T): Response<S> {
+    internal suspend inline fun <reified S> put(request: Request): Response<S> {
         return httpClient.put<HttpResponse> { buildRequest(request) }.processResponse()
     }
 
     @PublishedApi
-    internal suspend inline fun <reified S, reified T : Request<T>> delete(request: T): Response<S> {
+    internal suspend inline fun <reified S> delete(request: Request): Response<S> {
         return httpClient.delete<HttpResponse> { buildRequest(request) }.processResponse()
     }
 
     @PublishedApi
-    internal suspend inline fun <reified S, reified T : Request<T>> options(request: T): Response<S> {
+    internal suspend inline fun <reified S> options(request: Request): Response<S> {
         return httpClient.options<HttpResponse> { buildRequest(request) }.processResponse()
     }
 
     @PublishedApi
-    internal suspend inline fun <reified S, reified T : Request<T>> head(request: T): Response<S> {
+    internal suspend inline fun <reified S> head(request: Request): Response<S> {
         return httpClient.head<HttpResponse> { buildRequest(request) }.processResponse()
     }
 
     @PublishedApi
-    internal inline fun <reified T : Request<T>> HttpRequestBuilder.buildRequest(request: T) {
+    internal fun HttpRequestBuilder.buildRequest(request: Request) {
         url { takeFrom("${config.requestConfig.host}/${request.endpoint}") }
         request.query?.entries?.iterator()?.forEach {
             parameter(it.key, it.value)
@@ -166,20 +166,20 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
     }
 
     @PublishedApi
-    internal suspend inline fun <reified T> HttpResponse.processResponse(): Response<T> {
+    internal suspend inline fun <reified S> HttpResponse.processResponse(): Response<S> {
         val responseCode = status
         val headers = headers.toMap()
 
         return if (responseCode == HttpStatusCode.OK) {
             try {
-                val data = NetworkSerializer.serializer.read(typeInfo<T>(), this) as? T
+                val data = NetworkSerializer.serializer.read(typeInfo<S>(), this) as? S
                 Response(
                     result = data,
                     headers = headers,
                     responseCode = responseCode.value
                 )
             } catch (e: Exception) {
-                Response<T>(
+                Response<S>(
                     headers = headers,
                     responseCode = responseCode.value,
                     error = Error(code = -1, message = e.message)
@@ -187,7 +187,7 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
             }
         } else {
             try {
-                Response<T>(
+                Response<S>(
                     headers = headers,
                     responseCode = responseCode.value,
                     error = NetworkSerializer.serializer.read(
@@ -196,7 +196,7 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
                     ) as? Error
                 )
             } catch (e: Exception) {
-                Response<T>(
+                Response<S>(
                     headers = headers,
                     responseCode = responseCode.value,
                     error = Error(code = -1, message = e.message)

@@ -1,5 +1,5 @@
 package com.vhrdina.multiplatform.network.model
 
-class Config constructor(val requestConfig: RequestConfig,
-                         val debug: Boolean,
-                         val mock: Boolean)
+class Config constructor(var requestConfig: RequestConfig,
+                         var debug: Boolean = false,
+                         var mock: Boolean = false)

@@ -17,7 +17,7 @@ class NetworkClient(val config: Config) {
             httpClient = httpClientProvider.getHttpClient()
         )
 
-    inline fun <reified S, reified T : Request<T>> execute(request: T): CoroutineCallback<Response<S>> {
+    inline fun <reified S> execute(request: Request): CoroutineCallback<Response<S>> {
         return requestExecutor.execute(request)
     }
 }
