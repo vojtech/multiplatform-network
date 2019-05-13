@@ -1,15 +1,26 @@
 package com.vhrdina.multiplatform.network
 
-import com.vhrdina.multiplatform.network.model.Error
+import com.vhrdina.multiplatform.network.model.NetworkError
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.serialization.Transient
 
 class CoroutineCallback<T> {
 
     private val results = arrayListOf<T>()
-    private val errors = arrayListOf<Error>()
+    private val errors = arrayListOf<NetworkError>()
 
+    @Transient
+    @PublishedApi
+    internal val errorHandlerException = CoroutineExceptionHandler { _, throwable ->
+        println("RequestExecutor -> ErrorHandlerException: $throwable")
+        sendError(NetworkError(code = -1, message = throwable.message), false)
+    }
+
+    @Transient
     var onReceive: (T?) -> Unit = {}
 
-    var onError: (Error?) -> Unit = {}
+    @Transient
+    var onError: (NetworkError?) -> Unit = {}
 
     fun send(item: T, postpone: Boolean = false) {
         results.add(item)
@@ -27,7 +38,7 @@ class CoroutineCallback<T> {
         results.remove(item)
     }
 
-    fun sendError(item: Error, postpone: Boolean = false) {
+    fun sendError(item: NetworkError, postpone: Boolean = false) {
         errors.add(item)
         if (!postpone) notifyErrorReceiver(item)
     }
@@ -38,7 +49,7 @@ class CoroutineCallback<T> {
         }
     }
 
-    private fun notifyErrorReceiver(item: Error) {
+    private fun notifyErrorReceiver(item: NetworkError) {
         onError.invoke(item)
         errors.remove(item)
     }

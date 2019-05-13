@@ -3,13 +3,15 @@ package com.vhrdina.multiplatform.network.util
 import com.vhrdina.multiplatform.network.ApplicationDispatcher
 import com.vhrdina.multiplatform.network.CoroutineCallback
 import com.vhrdina.multiplatform.network.model.Config
-import com.vhrdina.multiplatform.network.model.Error
+import com.vhrdina.multiplatform.network.model.NetworkError
 import com.vhrdina.multiplatform.network.model.Request
 import com.vhrdina.multiplatform.network.model.Response
 import io.ktor.client.HttpClient
+import io.ktor.client.call.TypeInfo
 import io.ktor.client.call.typeInfo
 import io.ktor.client.request.*
 import io.ktor.client.response.HttpResponse
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.takeFrom
@@ -27,13 +29,8 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
     private val job = Job()
 
     @Transient
-    private val errorHandlerException = CoroutineExceptionHandler { _, throwable ->
-        println(throwable)
-    }
-
-    @Transient
     override val coroutineContext: CoroutineContext
-        get() = job + ApplicationDispatcher + errorHandlerException
+        get() = job + ApplicationDispatcher
 
     inline fun <reified S> execute(request: Request): CoroutineCallback<Response<S>> {
         return when (HttpMethod.parse(request.method)) {
@@ -51,15 +48,15 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
     internal inline fun <reified S> createUnsupportedMethodResponse(): CoroutineCallback<Response<S>> {
         return CoroutineCallback<Response<S>>()
             .apply {
-            sendError(Error(1000, "Unsupported Http Method"))
-        }
+                sendError(NetworkError(1000, "Unsupported Http Method"))
+            }
     }
 
     @PublishedApi
     internal inline fun <reified S> executeGet(request: Request): CoroutineCallback<Response<S>> {
         val coroutineCallback =
             CoroutineCallback<Response<S>>()
-        launch(coroutineContext) {
+        launch(coroutineContext+coroutineCallback.errorHandlerException) {
             coroutineCallback.send(get(request))
         }.invokeOnCompletion {
             coroutineCallback.clear()
@@ -71,8 +68,9 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
     internal inline fun <reified S> executePost(request: Request): CoroutineCallback<Response<S>> {
         val coroutineCallback =
             CoroutineCallback<Response<S>>()
-        launch(coroutineContext) {
-            coroutineCallback.send(post(request))
+        launch(coroutineContext+coroutineCallback.errorHandlerException) {
+            val response = post<S>(request)
+            coroutineCallback.send(response)
         }.invokeOnCompletion {
             coroutineCallback.clear()
         }
@@ -83,7 +81,7 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
     internal inline fun <reified S> executePut(request: Request): CoroutineCallback<Response<S>> {
         val coroutineCallback =
             CoroutineCallback<Response<S>>()
-        launch(coroutineContext) {
+        launch(coroutineContext+coroutineCallback.errorHandlerException) {
             coroutineCallback.send(put(request))
         }.invokeOnCompletion {
             coroutineCallback.clear()
@@ -95,7 +93,7 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
     internal inline fun <reified S> executeDelete(request: Request): CoroutineCallback<Response<S>> {
         val coroutineCallback =
             CoroutineCallback<Response<S>>()
-        launch(coroutineContext) {
+        launch(coroutineContext+coroutineCallback.errorHandlerException) {
             coroutineCallback.send(delete(request))
         }.invokeOnCompletion {
             coroutineCallback.clear()
@@ -107,7 +105,7 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
     internal inline fun <reified S> executeOptions(request: Request): CoroutineCallback<Response<S>> {
         val coroutineCallback =
             CoroutineCallback<Response<S>>()
-        launch(coroutineContext) {
+        launch(coroutineContext+coroutineCallback.errorHandlerException) {
             coroutineCallback.send(options(request))
         }.invokeOnCompletion {
             coroutineCallback.clear()
@@ -119,7 +117,7 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
     internal inline fun <reified S> executeHead(request: Request): CoroutineCallback<Response<S>> {
         val coroutineCallback =
             CoroutineCallback<Response<S>>()
-        launch(coroutineContext) {
+        launch(coroutineContext+coroutineCallback.errorHandlerException) {
             coroutineCallback.send(head(request))
         }.invokeOnCompletion {
             coroutineCallback.clear()
@@ -160,9 +158,20 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
     @PublishedApi
     internal fun HttpRequestBuilder.buildRequest(request: Request) {
         url { takeFrom("${config.requestConfig.host}/${request.endpoint}") }
-        request.query?.entries?.iterator()?.forEach {
+        request.query?.forEach {
             parameter(it.key, it.value)
         }
+        headers.apply {
+            append(HttpHeaders.ContentType, request.contentType ?: config.requestConfig.contentType)
+            config.requestConfig.headers?.forEach {
+                append(it.key, it.value)
+            }
+            request.headers?.forEach {
+                remove(it.key)
+                append(it.key, it.value)
+            }
+        }
+        request.body?.let { body = it }
     }
 
     @PublishedApi
@@ -170,39 +179,25 @@ class RequestExecutor constructor(val config: Config, val httpClient: HttpClient
         val responseCode = status
         val headers = headers.toMap()
 
-        return if (responseCode == HttpStatusCode.OK) {
+        val response = Response<S>().apply {
+            this.headers = headers
+            this.responseCode = responseCode.value
+        }
+
+        if (responseCode == HttpStatusCode.OK) {
             try {
-                val data = NetworkSerializer.serializer.read(typeInfo<S>(), this) as? S
-                Response(
-                    result = data,
-                    headers = headers,
-                    responseCode = responseCode.value
-                )
+                response.result = NetworkSerializer.kserializer.read(typeInfo<S>(), this) as? S
             } catch (e: Exception) {
-                Response<S>(
-                    headers = headers,
-                    responseCode = responseCode.value,
-                    error = Error(code = -1, message = e.message)
-                )
+                response.networkError = NetworkError(code = -1, message = e.message)
             }
         } else {
             try {
-                Response<S>(
-                    headers = headers,
-                    responseCode = responseCode.value,
-                    error = NetworkSerializer.serializer.read(
-                        typeInfo<Error>(),
-                        this
-                    ) as? Error
-                )
+                response.networkError = NetworkSerializer.kserializer.read(typeInfo<NetworkError>(), this) as? NetworkError
             } catch (e: Exception) {
-                Response<S>(
-                    headers = headers,
-                    responseCode = responseCode.value,
-                    error = Error(code = -1, message = e.message)
-                )
+                response.networkError = NetworkError(code = -1, message = e.message)
             }
         }
-    }
 
+        return response
+    }
 }

@@ -10,10 +10,15 @@ plugins {
     `maven-publish`
 }
 
+apply("android-config.gradle")
+
 val lib_version: String by project
 val lib_group: String by project
 val lib_artifact_id: String by project
 val framework_name: String by project
+
+val includeiOS: String by project
+val includeAndroid: String by project
 
 group = lib_group
 version = lib_version
@@ -57,38 +62,61 @@ allprojects {
 
 kotlin {
 
-    jvm("android")
-
-    // ios device
-    val iosArm32 = iosArm32("iosArm32")
-
-    // ios device
-    val iosArm64 = iosArm64("iosArm64")
-
-    //ios simulator
-    val iosX64 = iosX64("iosX64")
-
-    configure(listOf(iosArm32, iosArm64, iosX64)) {
-        binaries.framework {
-            baseName = framework_name
-            val isSimulator = targetName == "iosX64"
-
-            if (isSimulator) {
-                embedBitcode(Framework.BitcodeEmbeddingMode.DISABLE)
-            }
+    if (includeAndroid == "true") {
+        val android = android("android") {
+            publishLibraryVariants("release", "debug")
         }
+
+        jvm("jvm")
     }
 
-    val fullFat = arrayOf(iosArm32, iosArm64, iosX64)
-    val deviceSimulator64 = arrayOf(iosArm64, iosX64)
-    val deviceOnly = arrayOf(iosArm32, iosArm64)
+    if (includeiOS == "true") {
+        // ios device
+        val iosArm32 = iosArm32("iosArm32")
 
-    createFatFramework(FatFrameworkConfig.FullDebug(frameworkName = framework_name, frameworks = fullFat))
-    createFatFramework(FatFrameworkConfig.FullRelease(frameworkName = framework_name, frameworks = fullFat))
-    createFatFramework(FatFrameworkConfig.DeviceSimulator64Debug(frameworkName = framework_name, frameworks = deviceSimulator64))
-    createFatFramework(FatFrameworkConfig.DeviceSimulator64Release(frameworkName = framework_name, frameworks = deviceSimulator64))
-    createFatFramework(FatFrameworkConfig.Device32x64Debug(frameworkName = framework_name, frameworks = deviceOnly))
-    createFatFramework(FatFrameworkConfig.Device32x64Release(frameworkName = framework_name, frameworks = deviceOnly))
+        // ios device
+        val iosArm64 = iosArm64("iosArm64")
+
+        //ios simulator
+        val iosX64 = iosX64("iosX64")
+
+        configure(listOf(iosArm32, iosArm64, iosX64)) {
+            binaries.framework {
+                baseName = framework_name
+                val isSimulator = targetName == "iosX64"
+
+                if (isSimulator) {
+                    embedBitcode(Framework.BitcodeEmbeddingMode.DISABLE)
+                }
+            }
+        }
+
+        val fullFat = arrayOf(iosArm32, iosArm64, iosX64)
+        val deviceSimulator64 = arrayOf(iosArm64, iosX64)
+        val deviceOnly = arrayOf(iosArm32, iosArm64)
+
+        createFatFramework(FatFrameworkConfig.FullDebug(frameworkName = framework_name, frameworks = fullFat))
+        createFatFramework(FatFrameworkConfig.FullRelease(frameworkName = framework_name, frameworks = fullFat))
+        createFatFramework(
+            FatFrameworkConfig.DeviceSimulator64Debug(
+                frameworkName = framework_name,
+                frameworks = deviceSimulator64
+            )
+        )
+        createFatFramework(
+            FatFrameworkConfig.DeviceSimulator64Release(
+                frameworkName = framework_name,
+                frameworks = deviceSimulator64
+            )
+        )
+        createFatFramework(FatFrameworkConfig.Device32x64Debug(frameworkName = framework_name, frameworks = deviceOnly))
+        createFatFramework(
+            FatFrameworkConfig.Device32x64Release(
+                frameworkName = framework_name,
+                frameworks = deviceOnly
+            )
+        )
+    }
 
     sourceSets {
         val commonMain by getting {
@@ -111,64 +139,76 @@ kotlin {
             }
         }
 
-        val androidMain by getting {
-            dependencies {
-                implementation(Dependencies.Android.kotlin_stdlib)
-                implementation(Dependencies.Android.coroutines_android)
-                implementation(Dependencies.Android.coroutines_core)
-                implementation(Dependencies.Android.ktor_client_android)
-                implementation(Dependencies.Android.ktor_client_json)
-                implementation(Dependencies.Android.ktor_client_logging_jvm)
-                implementation(Dependencies.Android.ktor_client_mock_jvm)
-                implementation(Dependencies.Android.ktor_client_okhttp)
+        if (includeAndroid == "true") {
+            val androidMain by getting {
+                dependencies {
+                    implementation(Dependencies.Android.kotlin_stdlib)
+                    implementation(Dependencies.Android.coroutines_android)
+                    implementation(Dependencies.Android.coroutines_core)
+                    implementation(Dependencies.Android.serialization)
+                    implementation(Dependencies.Android.ktor_client_android)
+                    implementation(Dependencies.Android.ktor_client_json)
+                    implementation(Dependencies.Android.ktor_client_logging_jvm)
+                    implementation(Dependencies.Android.ktor_client_mock_jvm)
+                    implementation(Dependencies.Android.ktor_client_okhttp)
+                }
+            }
+
+            val androidTest by getting {
+                dependencies {
+                    implementation(Dependencies.Android.Test.kotlin_test)
+                    implementation(Dependencies.Android.Test.junit)
+                }
+            }
+
+            val jvmMain by getting {
+                dependsOn(androidMain)
+            }
+
+        }
+
+        if (includeiOS == "true") {
+            val iosArm64Main by getting {
+                dependencies {
+                    implementation(Dependencies.iOS.coroutines_core)
+                    implementation(Dependencies.iOS.serialization_native)
+                    implementation(Dependencies.iOS.ktor_client_core)
+                    implementation(Dependencies.iOS.ktor_client_ios)
+                    implementation(Dependencies.iOS.ktor_client_json)
+                    implementation(Dependencies.iOS.ktor_client_logging)
+                    implementation(Dependencies.iOS.ktor_client_mock)
+                }
+            }
+
+            val iosArm64Test by getting {
+            }
+
+            val iosX64Main by getting {
+                dependsOn(iosArm64Main)
+            }
+
+            val iosX64Test by getting {
+                dependsOn(iosArm64Test)
+            }
+
+            val iosArm32Main by getting {
+                dependsOn(iosArm64Main)
+            }
+
+            val iosArm32Test by getting {
+                dependsOn(iosArm64Test)
             }
         }
 
-        val androidTest by getting {
-            dependencies {
-                implementation(Dependencies.Android.Test.kotlin_test)
-                implementation(Dependencies.Android.Test.junit)
-            }
-        }
-
-        val iosArm64Main by getting {
-            dependencies {
-                implementation(Dependencies.iOS.coroutines_core)
-                implementation(Dependencies.iOS.serialization_native)
-                implementation(Dependencies.iOS.ktor_client_core)
-                implementation(Dependencies.iOS.ktor_client_ios)
-                implementation(Dependencies.iOS.ktor_client_json)
-                implementation(Dependencies.iOS.ktor_client_logging)
-                implementation(Dependencies.iOS.ktor_client_mock)
-            }
-        }
-
-        val iosArm64Test by getting {
-        }
-
-        val iosX64Main by getting {
-            dependsOn(iosArm64Main)
-        }
-
-        val iosX64Test by getting {
-            dependsOn(iosArm64Test)
-        }
-
-        val iosArm32Main by getting {
-            dependsOn(iosArm64Main)
-        }
-
-        val iosArm32Test by getting {
-            dependsOn(iosArm64Test)
+        if (includeiOS == "true") {
+            tasks.build.dependsOn("fatFrameworkFullDebug")
+            tasks.build.dependsOn("fatFrameworkFullRelease")
+            tasks.build.dependsOn("fatFrameworkDeviceSimulator64Debug")
+            tasks.build.dependsOn("fatFrameworkDeviceSimulator64Release")
+            tasks.build.dependsOn("fatFrameworkDevice32x64Debug")
+            tasks.build.dependsOn("fatFrameworkDevice32x64Release")
         }
     }
-
-    tasks.build.dependsOn("fatFrameworkFullDebug")
-    tasks.build.dependsOn("fatFrameworkFullRelease")
-    tasks.build.dependsOn("fatFrameworkDeviceSimulator64Debug")
-    tasks.build.dependsOn("fatFrameworkDeviceSimulator64Release")
-    tasks.build.dependsOn("fatFrameworkDevice32x64Debug")
-    tasks.build.dependsOn("fatFrameworkDevice32x64Release")
 
 //        cocoapods {
 //            summary = "Multiplatform network library"

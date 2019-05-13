@@ -1,6 +1,6 @@
 package com.vhrdina.multiplatform.network.model
 
-class Response<T> constructor(val result: T? = null,
-                              val headers: Map<String, List<String>>? = null,
-                              val responseCode: Int? = null,
-                              val error: Error? = null)
+data class Response<T> constructor(var result: T? = null,
+                                   var headers: Map<String, List<String>>? = null,
+                                   var responseCode: Int? = null,
+                                   var networkError: NetworkError? = null)
